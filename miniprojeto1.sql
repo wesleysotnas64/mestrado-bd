@@ -1,5 +1,5 @@
 -- Miniprojeto 1: Modelagem e Análise de Dados Estruturados
--- Nome: [Seu Nome Completo]
+-- Nome: [Wesley Santos Sousa]
 -- Opção escolhida: [C]
 -- SGBD utilizado: [PostgreSQL]
 -- Data: [29-09-2026]
@@ -350,7 +350,7 @@ JOIN doctors d ON a.doctor_id = d.doctor_id
 JOIN specialties s ON a.specialty_id = s.specialty_id
 ORDER BY a.appointment_date ASC; 
 
--- CONSOLTAS ESPECÍFICAS DO PDF
+-------- CONSOLTAS ESPECÍFICAS DO PDF --------
 -- 1. Receita total gerada por cada especialidade médica (da maior para a menor)
 SELECT 
     s.specialty_name AS especialidade,
@@ -397,6 +397,117 @@ ORDER BY
     especialidades_distintas DESC, 
     p.patient_name ASC;
 
--- OUTRAS CONSULTAS REALIZADAS NO SISTEMA
+-------- OUTRAS CONSULTAS REALIZADAS NO SISTEMA --------
+-- 1. Listar médicos com o CRM do estado de São Paulo (SP)
+SELECT 
+    doctor_name, 
+    doctor_license_number
+FROM doctors
+WHERE doctor_license_number LIKE '%SP%'
+ORDER BY doctor_name;
 
+-- 2. As 5 consultas mais caras registradas na clínica (com médico, paciente e especialidade)
+SELECT 
+    a.appointment_id, 
+    a.appointment_date, 
+    p.patient_name AS paciente,
+    d.doctor_name AS medico,
+    s.specialty_name AS especialidade,
+    a.appointment_price AS valor
+FROM appointments a
+JOIN patients p ON a.patient_id = p.patient_id
+JOIN doctors d ON a.doctor_id = d.doctor_id
+JOIN specialties s ON a.specialty_id = s.specialty_id
+ORDER BY a.appointment_price DESC
+LIMIT 5;
+
+-- 4. Consultas com o nome do paciente e o valor pago
+SELECT 
+    p.patient_name,
+	s.specialty_name,
+    a.appointment_date,
+    a.appointment_price
+FROM appointments a
+JOIN patients p ON a.patient_id = p.patient_id
+JOIN specialties s ON a.specialty_id = s.specialty_id
+--ORDER BY a.appointment_date DESC
+ORDER BY p.patient_name ASC;
+
+-- 5. Ticket médio (média do valor) das consultas na clínica
+SELECT 
+    COUNT(appointment_id) AS total_consultas,
+    ROUND(AVG(appointment_price), 2) AS valor_medio_consulta,
+    MIN(appointment_price) AS valor_minimo,
+    MAX(appointment_price) AS valor_maximo
+FROM appointments;
+
+-- 6. Quantidade de médicos cadastrados por especialidade
+SELECT 
+    s.specialty_name,
+    COUNT(ds.doctor_id) AS quantidade_medicos
+FROM specialties s
+LEFT JOIN doctor_specialty ds ON s.specialty_id = ds.specialty_id
+GROUP BY s.specialty_id, s.specialty_name
+ORDER BY quantidade_medicos DESC;
+
+-- 7. Classificar o preço das consultas em faixas de valor
+SELECT 
+    a.appointment_id,
+	s.specialty_name,
+    a.appointment_price,
+    CASE 
+        WHEN appointment_price >= 300.00 THEN 'Alto Custo'
+        WHEN appointment_price >= 200.00 THEN 'Médio Custo'
+        ELSE 'Acessível'
+    END AS faixa_preco
+FROM appointments AS a
+JOIN specialties s ON a.specialty_id = s.specialty_id
+ORDER BY appointment_price DESC;
+
+-- 8. Pacientes que pagaram acima da média geral de preços nas consultas
+SELECT 
+    p.patient_name,
+    a.appointment_date,
+    a.appointment_price
+FROM appointments a
+JOIN patients p ON a.patient_id = p.patient_id
+WHERE a.appointment_price > (
+    SELECT AVG(appointment_price) FROM appointments
+)
+ORDER BY a.appointment_price DESC;
+
+-- 9. CTE (Common Table Expression): Ranking do faturamento e número de atendimentos por médico
+WITH faturamento_medico AS (
+    SELECT 
+        d.doctor_id,
+        d.doctor_name,
+        COUNT(a.appointment_id) AS qtd_consultas,
+        COALESCE(SUM(a.appointment_price), 0) AS total_faturado
+    FROM doctors d
+    LEFT JOIN appointments a ON d.doctor_id = a.doctor_id
+    GROUP BY d.doctor_id, d.doctor_name
+)
+SELECT 
+    doctor_name,
+    qtd_consultas,
+    total_faturado
+FROM faturamento_medico
+ORDER BY total_faturado DESC;
+
+
+-- 10. WINDOW FUNCTION: Ranking das consultas mais caras DENTRO de cada especialidade
+SELECT 
+    s.specialty_name,
+    p.patient_name,
+    d.doctor_name,
+    a.appointment_price,
+    DENSE_RANK() OVER (
+        PARTITION BY a.specialty_id 
+        ORDER BY a.appointment_price DESC
+    ) AS rank_preco_especialidade
+FROM appointments a
+JOIN specialties s ON a.specialty_id = s.specialty_id
+JOIN patients p ON a.patient_id = p.patient_id
+JOIN doctors d ON a.doctor_id = d.doctor_id
+ORDER BY s.specialty_name, rank_preco_especialidade;
 
