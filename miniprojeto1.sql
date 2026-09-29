@@ -303,13 +303,25 @@ INSERT INTO appointments (patient_id, doctor_id, specialty_id, appointment_date,
     -- 20. Aline Insônia (Patient 20) com Dra. Rita Remédio (Doctor 20) em Pneumologia (Specialty 16)
     (20, 20, 16, '2026-09-24 16:30:00', 280.00);
 
+-- Outras inserções de consulta
+INSERT INTO appointments (patient_id, doctor_id, specialty_id, appointment_date, appointment_price) VALUES
+    (20, 18, 20, '2026-01-02 08:30:00', 250.00),
+    (15, 10, 7, '2026-01-03 09:15:00', 300.00);
+
+INSERT INTO appointments (patient_id, doctor_id, specialty_id, appointment_date, appointment_price) VALUES
+    (20, 6, 3, '2026-04-04 15:30:00', 250.00),
+    (19, 6, 20, '2025-03-03 13:30:00', 250.00),
+    (18, 6, 15, '2024-02-02 09:30:00', 250.00),
+    (17, 6, 1, '2025-11-11 10:30:00', 250.00);
+
 -- ===================================
 -- 3. CONSULTAS ANALÍTICAS (QUERIES)
 -- ===================================
 
--- Consulta geral de cada tabela
+-- CONSULTA GERAL DE CADA TABELA
 SELECT * FROM specialties;
 SELECT * FROM doctors;
+
 
 SELECT * FROM doctor_specialty;
 SELECT 
@@ -337,4 +349,54 @@ JOIN patients p ON a.patient_id = p.patient_id
 JOIN doctors d ON a.doctor_id = d.doctor_id
 JOIN specialties s ON a.specialty_id = s.specialty_id
 ORDER BY a.appointment_date ASC; 
+
+-- CONSOLTAS ESPECÍFICAS DO PDF
+-- 1. Receita total gerada por cada especialidade médica (da maior para a menor)
+SELECT 
+    s.specialty_name AS especialidade,
+    COUNT(a.appointment_id) AS total_consultas,
+    SUM(a.appointment_price) AS receita_total
+FROM appointments a
+JOIN specialties s ON a.specialty_id = s.specialty_id
+GROUP BY 
+    s.specialty_id, 
+    s.specialty_name
+ORDER BY 
+    receita_total DESC;
+
+-- 2. Lista de médicos e quantidade de consultas realizadas no último ano
+SELECT 
+    d.doctor_name AS medico,
+    d.doctor_license_number AS crm,
+    COUNT(a.appointment_id) AS total_consultas
+FROM doctors d
+LEFT JOIN appointments a 
+    ON d.doctor_id = a.doctor_id 
+   AND a.appointment_date >= (CURRENT_DATE - INTERVAL '1 year')
+GROUP BY 
+    d.doctor_id, 
+    d.doctor_name, 
+    d.doctor_license_number
+ORDER BY 
+    total_consultas DESC, 
+    d.doctor_name ASC;
+
+-- 3. Pacientes que se consultaram com mais de uma especialidade diferente
+SELECT 
+    p.patient_name AS paciente,
+    COUNT(DISTINCT a.specialty_id) AS especialidades_distintas
+FROM patients p
+JOIN appointments a 
+    ON p.patient_id = a.patient_id
+GROUP BY 
+    p.patient_id, 
+    p.patient_name
+HAVING 
+    COUNT(DISTINCT a.specialty_id) > 1
+ORDER BY 
+    especialidades_distintas DESC, 
+    p.patient_name ASC;
+
+-- OUTRAS CONSULTAS REALIZADAS NO SISTEMA
+
 
