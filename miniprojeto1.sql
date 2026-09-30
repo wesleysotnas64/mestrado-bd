@@ -476,38 +476,4 @@ WHERE a.appointment_price > (
 )
 ORDER BY a.appointment_price DESC;
 
--- 9. CTE (Common Table Expression): Ranking do faturamento e número de atendimentos por médico
-WITH faturamento_medico AS (
-    SELECT 
-        d.doctor_id,
-        d.doctor_name,
-        COUNT(a.appointment_id) AS qtd_consultas,
-        COALESCE(SUM(a.appointment_price), 0) AS total_faturado
-    FROM doctors d
-    LEFT JOIN appointments a ON d.doctor_id = a.doctor_id
-    GROUP BY d.doctor_id, d.doctor_name
-)
-SELECT 
-    doctor_name,
-    qtd_consultas,
-    total_faturado
-FROM faturamento_medico
-ORDER BY total_faturado DESC;
-
-
--- 10. WINDOW FUNCTION: Ranking das consultas mais caras DENTRO de cada especialidade
-SELECT 
-    s.specialty_name,
-    p.patient_name,
-    d.doctor_name,
-    a.appointment_price,
-    DENSE_RANK() OVER (
-        PARTITION BY a.specialty_id 
-        ORDER BY a.appointment_price DESC
-    ) AS rank_preco_especialidade
-FROM appointments a
-JOIN specialties s ON a.specialty_id = s.specialty_id
-JOIN patients p ON a.patient_id = p.patient_id
-JOIN doctors d ON a.doctor_id = d.doctor_id
-ORDER BY s.specialty_name, rank_preco_especialidade;
 
